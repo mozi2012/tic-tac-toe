@@ -1,3 +1,4 @@
+
 (ns tic-tac-toe.core
   (:require [reagent.dom :as rdom]
             [reagent.core :as r]))
@@ -5,71 +6,92 @@
 (defonce app-state
   (r/atom
    {:current-player :X
-
+    
     :winner-text nil
-
     :win false
+
+    :gravity? false
     
     :board [nil nil nil
             nil nil nil
             nil nil nil]}))
 
+(def wins
+  [[0 1 2] [3 4 5] [6 7 8] ;; rows
+   [0 3 6] [1 4 7] [2 5 8] ;; cols
+   [0 4 8] [2 4 6]])       ;; diags
+
 (defn three-in-a-row?
-  []
-  (let [board (@app-state :board)
-        player (@app-state :current-player)
-        row1? (and (= player (board 0))
-                   (= player (board 1))
-                   (= player (board 2)))
-        row2? (and (= player (board 3))
-                   (= player (board 4))
-                   (= player (board 5)))
-        row3? (and (= player (board 6))
-                   (= player (board 7))
-                   (= player (board 8)))
-        colm1? (and (= player (board 0))
-                    (= player (board 3))
-                    (= player (board 6)))
-        colm2? (and (= player (board 1))
-                    (= player (board 4))
-                    (= player (board 7)))
-        colm3? (and (= player (board 2))
-                    (= player (board 5))
-                    (= player (board 8)))
-        dia1? (and (= player (board 0))
-                   (= player (board 4))
-                   (= player (board 8)))
-        dia2? (and (= player (board 2))
-                   (= player (board 4))
-                   (= player (board 6)))
-        three-in-row? (or row1? row2? row3? colm1? colm1? colm2? colm3? dia1? dia2?)
-        ]
-    (prn row1? row2? row3? colm1? colm1? colm2? colm3? dia1? dia2?)
-    three-in-row?
+  [board]
+  (let [player (@app-state :current-player)]
+    (some (fn [indices]
+            (every? #(= player (board %)) indices))
+          wins)))
+
+(defn reset-app-state!
+  [current-player gravity?]
+  (reset! app-state {:current-player current-player
+
+                     :winner-text nil
+                     :win false
+
+                     :gravity? gravity? 
+                     
+                     :board [nil nil nil
+                             nil nil nil
+                             nil nil nil]}))
+
+
+(defn is-letter-below?
+  [index board]
+  (if (> index 5)
+    true
+    (let [letter-below (board (+ index 3))]
+      (if (= nil letter-below)
+        false
+        true))))
+
+(defn gravity
+  [index board]
+  (loop [i index]
+    (if (is-letter-below? i board)
+      i
+      (recur (+ i 3)))
     )
   )
 
-(defn evaluate-board
-  [])
-
 (defn add-letter-to-board!
   [i]
-  (swap! app-state assoc-in [:board i] (@app-state :current-player)))
+  (swap! app-state assoc-in [:board i] (@app-state :current-player))
+    
+    
+  )
 
 (defn switch-player!
   []
   (swap! app-state update :current-player (fn [c]
-                                              (if (= c :X)
+                                            (if (= c :X)
+                                              :O
+                                              :X)
+                                            
+                                            #_(cond
+                                                (= c :X)
                                                 :O
+                                                (= c :O)
+                                                :C
+                                                (= c :C)
                                                 :X))))
 
 (defn square-on-click!
   [i]
+  (prn (@app-state :gravity?))
   (let [square-nil? (nil? ((@app-state :board) i ))]
 
     (when square-nil?
-      (do (add-letter-to-board! i)
-          (when (three-in-a-row?)
+      (do (add-letter-to-board! (if (@app-state :gravity?)
+                                  (gravity i (@app-state :board))
+                                  i))
+          (when (three-in-a-row? (@app-state :board) )
             (swap! app-state (fn [state]
                                (-> state
                                    (assoc :winner-text (str "THE WINNER IS " (@app-state :current-player) "!!"))
@@ -88,14 +110,20 @@
                  :font-weight "bold"
                  :cursor "pointer"
                  :background-color "#fff"}
-         :on-click #(square-on-click! i)}
+         :on-click #(when-not (@app-state :win)
+                      (square-on-click! i))}
    ((-> @app-state
         :board ) i)])
 
 (defn board
   []
   [:div
-   [:h1 "Tic Tac Toe"]
+   [:h1 {:on-click (fn []
+                     (prn "gravity? swapped")
+                     (swap! app-state update :gravity?
+                            (fn [b]
+                              (not b))))}
+    "Tic Tac Toe"]
    [:h1 {:style {:display "flex"
                  :justify-content "center"
                  :align-items "center"}}
@@ -103,10 +131,19 @@
            "next"
            "current")
          "-player:") (@app-state :current-player) ]
+   
    [:h1 {:style {:display "flex"
                  :justify-content "center"
                  :align-items "center"}}
     (@app-state :winner-text)]
+
+   [:h2 {:style {:display "flex"
+                 :justify-content "center"
+                 :align-items "center"
+                 :color "blue"}
+         :on-click #(reset-app-state! (@app-state :current-player) (@app-state :gravity?))}
+    "click to reset"]
+   
    [:div {:style {:display "grid"
                   :grid-template-columns "repeat(3, 100px)"
                   :grid-template-rows "repeat(3, 100px)"
