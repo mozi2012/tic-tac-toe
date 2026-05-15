@@ -1,7 +1,18 @@
 
 (ns tic-tac-toe.core
   (:require [reagent.dom :as rdom]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [cljs.reader :refer [read-string]]))
+
+(defonce ws-messages (r/atom []))
+
+#_(defonce ws 
+  (let [socket (js/WebSocket. "ws://wabbit.bumble.fish:8080")]
+    (set! (.-onmessage socket) (fn [event]
+                                 (swap! ws-messages conj (.-data event))))
+    socket))
+
+
 
 (defonce app-state
   (r/atom
@@ -15,6 +26,14 @@
     :board [nil nil nil
             nil nil nil
             nil nil nil]}))
+
+(defonce ws 
+  (let [socket (js/WebSocket. "ws://wabbit.bumble.fish:8080")]
+    (set! (.-onmessage socket) (fn [event]
+                                 (let [new-state (read-string (.-data event))]
+                                   (prn "new-state: " new-state)
+                                   (reset! app-state new-state))))
+    socket))
 
 (def wins
   [[0 1 2] [3 4 5] [6 7 8] ;; rows
@@ -115,6 +134,8 @@
    ((-> @app-state
         :board ) i)])
 
+
+
 (defn board
   []
   [:div
@@ -153,7 +174,14 @@
                   :width "max-content"
                   :margin "20px auto"}}
     (for [i (range 9)]
-      ^{:key i} [square i])]])
+      ^{:key i} [square i])]
+   
+   [:div {:style {:margin-top "40px" :text-align "center"}}
+    [:button {:on-click #(.send ws @app-state)} "transfer state"]
+    [:div {:style {:margin-top "20px"}}
+     [:h3 "WebSocket Messages:"]
+     (for [[i msg] (map-indexed list @ws-messages)]
+       ^{:key i} [:p msg])]]])
 
 (defn mount-root
   []
