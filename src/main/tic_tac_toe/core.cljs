@@ -3,6 +3,12 @@
             [reagent.core :as r]
             [cljs.reader :refer [read-string]]))
 
+(defn cider-test
+  []
+  (prn "hello world!"))
+
+ ;;tic-tac-toe ;;chess
+
 (defonce app-state
   (r/atom
    {    
@@ -215,9 +221,15 @@
     [:div {:style {:margin-top "20px"}}]]])
 
 
+
+
+;;CHESS:
+
+
+
 (defonce chess-state (r/atom
                       {
-                       :board-test [nil  nil nil nil
+                       :board-test [nil nil nil nil
                                     nil nil nil nil
                                     nil nil nil nil
                                     :king  nil nil nil]
@@ -249,12 +261,105 @@
                                    :left 1
                                    :down 1}}}})
 
-(defn act-2d-vector
-  [vector ylimit ])
+(defn vector-2d
+  [number-of-items-in-row  vector]
+  (vec (map (fn [item]
+              (vec item))
+            (partition number-of-items-in-row vector )))
+  
+  )
+
+(defn read-vector-2d
+  [ cords vector]
+  (let [cord-amount (count cords)]
+    (prn cord-amount)
+    (loop [nested-vector vector
+           counter 0]
+      
+      
+      (if (= counter cord-amount)
+        (do
+          (prn "END")
+          nested-vector)
+        (do
+          (prn "RECUR")
+          (recur (nested-vector (cords counter)) (+ counter 1)))
+        )
+      
+      ))
+
+  )
 
 (comment
+
+  ([[0 1 2]
+    [3 4 5]
+    [6 7 8]] 1)
+  (read-vector-2d [2 2]
+                  [[0 1 2]
+                   [3 4 5]
+                   [6 7 8]])
+
+
+  (read-vector-2d [1 1 1]
+                  [[[0 1 2]
+                    [3 4 5]
+                    [6 7 8]]
+
+                   [[9 10 11]
+                    [12 13 14]
+                    [15 16 17]]
+
+                   [[18 19 20]
+                    [21 22 23]
+                    [24 25 26]]])
+  (get-in [[[0 1 2]
+            [3 4 5]
+            [6 7 8]]
+
+           [[9 10 11]
+            [12 13 14]
+            [15 16 17]]
+
+           [[18 19 20]
+            [21 22 23]
+            [24 25 26]]]
+          [1 1 1]
+          )
   
-  (vec (partition 4 [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]))
+  [[0 1 2]
+   [3 4 5]
+   [6 7 8]]
+
+  
+  [[[0 1 2]
+    [3 4 5]
+    [6 7 8]]
+
+   [[9 10 11]
+    [12 13 14]
+    [15 16 17]]
+
+   [[18 19 20]
+    [21 22 23]
+    [24 25 26]]]
+
+  
+   
+  
+  
+  (let [v2D (vector-2d 4 [0  1  2  3
+                          4  5  6  7
+                          8  9  10 11
+                          12 13 14 15])]
+
+    (prn v2D)
+    (prn ((v2D 0) 3))
+    (prn ((v2D 3) 0))
+    )
+
+  
+  
   [0 1 2 3 4 5 6 7]
   [[0 1 2 3]
    [4 5 6 7]]
@@ -350,11 +455,14 @@
 
 
 
+
+
 (defn mount-root
   []
   #_(rdom/render [board-tic-tac-toe] (.getElementById js/document "app"))
-  (prn :foo1)
-  (rdom/render [board-chess] (.getElementById js/document "app")))
+  (rdom/render [board-chess] (.getElementById js/document "app"))
+  
+  )
 
 (defn init
   []
