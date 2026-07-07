@@ -229,37 +229,65 @@
 
 (defonce chess-state (r/atom
                       {
-                       :board-test [nil nil nil nil
-                                    nil nil nil nil
-                                    nil nil nil nil
-                                    :king  nil nil nil]
-
+                       
                        :piece-clicked nil
                        
+                       :can-move-to nil 
                        
-                       :board [:R  :N  :B  :Q  :K  :B  :N  :R
-                               :P  :P  :P  :P  :P  :P  :P  :P
-                               nil nil nil nil nil nil nil nil
-                               nil nil nil nil nil nil nil nil
-                               nil nil nil nil nil nil nil nil
-                               nil nil nil nil nil nil nil nil
-                               nil nil nil nil nil nil nil nil
-                               nil nil nil nil nil nil nil nil]
+                       :board [[nil nil nil nil nil nil nil {:type :king :color :black}]
+                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil nil nil nil nil]
+                               [{:type :king :color :black}
+                                nil nil nil nil nil nil nil]]
 
                        }))
-(def chess-pieces
+
+(comment
+
+  (vector-2d 8 (range 64))
+  #_([[00 01 02 03 04 05 06 07]
+    ;;[08 09 10 11 12 13 14 15]
+    [16 17 18 19 20 21 22 23]
+    [24 25 26 27 KI 29 30 31]
+    [32 33 34 35 36 37 38 39]
+    [40 41 42 43 44 45 46 47]
+    [48 49 50 51 52 53 54 55]
+    [56 57 58 59 60 61 62 63]])
+  )
+
+(def chess-piece-data
   {:pawn {:name "pawn"
           :symbol :P
-          :movement {:move-square {:up 1
-                                   :right 0
-                                   :left 0
-                                   :down 0}}}
+          :movement {:U 2}}
+   
    :king {:name "king"
           :symbol :K
-          :movement {:move-square {:up 1
-                                   :right 1
-                                   :left 1
-                                   :down 1}}}})
+          :movement {:L 1
+                     :R 1
+                     :U 1
+                     :D 1
+                     :UL 1
+                     :UR 1
+                     :DL 1
+                     :DR 1}
+          #_(fn [board piece-index]
+              [])}
+   :rook {:name "king"
+         }}
+  
+  )
+
+(comment
+  {:U 'n}
+  {:U [> ]}
+  
+  
+
+  )
 
 (defn vector-2d
   [number-of-items-in-row  vector]
@@ -269,198 +297,255 @@
   
   )
 
-(defn read-vector-2d
-  [ cords vector]
+(defn convert-to-coord 
+  [number]
+  (loop [yn number
+         xcounter 0]
+    (if (zero? (mod yn 8))
+      [(/ yn 8) xcounter]
+      (recur (- yn 1) (inc xcounter)))))
+
+(defn read-dimensional-vector
+  [cords vector]
   (let [cord-amount (count cords)]
-    (prn cord-amount)
     (loop [nested-vector vector
            counter 0]
-      
-      
       (if (= counter cord-amount)
-        (do
-          (prn "END")
-          nested-vector)
-        (do
-          (prn "RECUR")
-          (recur (nested-vector (cords counter)) (+ counter 1)))
-        )
-      
-      ))
-
-  )
+        nested-vector
+        (recur (nested-vector (cords counter)) (+ counter 1))))))
 
 (comment
 
-  ([[0 1 2]
-    [3 4 5]
-    [6 7 8]] 1)
-  (read-vector-2d [2 2]
-                  [[0 1 2]
-                   [3 4 5]
-                   [6 7 8]])
-
-
-  (read-vector-2d [1 1 1]
-                  [[[0 1 2]
-                    [3 4 5]
-                    [6 7 8]]
-
-                   [[9 10 11]
-                    [12 13 14]
-                    [15 16 17]]
-
-                   [[18 19 20]
-                    [21 22 23]
-                    [24 25 26]]])
-  (get-in [[[0 1 2]
-            [3 4 5]
-            [6 7 8]]
-
-           [[9 10 11]
-            [12 13 14]
-            [15 16 17]]
-
-           [[18 19 20]
-            [21 22 23]
-            [24 25 26]]]
-          [1 1 1]
-          )
+  {:U 4}
   
-  [[0 1 2]
-   [3 4 5]
-   [6 7 8]]
+  (can-move-to [5 5] {:U 4} nil)
+  (coord-direction-handler :U 4 [4 4])
+  (can-move-to [0 0] {:L 1
+                     :R 1
+                     :U 1
+                     :D 1
+                      } 0)
+  )
 
-  
-  [[[0 1 2]
-    [3 4 5]
-    [6 7 8]]
-
-   [[9 10 11]
-    [12 13 14]
-    [15 16 17]]
-
-   [[18 19 20]
-    [21 22 23]
-    [24 25 26]]]
-
-  
-   
-  
-  
-  (let [v2D (vector-2d 4 [0  1  2  3
-                          4  5  6  7
-                          8  9  10 11
-                          12 13 14 15])]
-
-    (prn v2D)
-    (prn ((v2D 0) 3))
-    (prn ((v2D 3) 0))
+(defn coord-direction-handler
+  [direction distance [y x]]
+  (cond
+    (= direction :U)
+    [(- y distance) x]
+    (= direction :D)
+    [(+ y distance) x]
+    (= direction :L)
+    [y (- x distance)]
+    (= direction :R)
+    [y (+ x distance)]
+    (= direction :UL)
+    [(- y 1) (- x 1)]
+    (= direction :UR)
+    [(- y 1) (+ x 1)]
+    (= direction :DL)
+    [(+ y 1) (- x 1)]
+    (= direction :DR)
+    [(+ y 1) (+ x 1)]
+    :else
+    (prn "ERROR:" direction)
     )
 
-  
-  
-  [0 1 2 3 4 5 6 7]
-  [[0 1 2 3]
-   [4 5 6 7]]
-  
-  ;;chess piece data structure
-  {:name "pawn"
-   :symbol :P
-   :movement {:move-square {:up 1
-                            :up-right 0
-                            :up-left 0
+  #_{:U (fn [[y x] n] [(- y n) x])
+     :D (fn [[y x] n] [(+ y n) x])
+     :L (fn [[y x] n] [y (- x n)])
+     :R (fn [[y x] n] [y (+ x n)])})
 
-                            :down 0
-                            :down-right 0
-                            :down-left 0
-                            
-                            :right 0
-                            :left 0
-                            }}
-   #_(:capturing {})
-   }
+
+(defn can-move-to
+  [piece-coords piece-data board-state]
+  (prn "piece-data: " piece-data)
+  (vec  (mapcat (fn [[direction number-of-spaces]]
+                  (map (fn [s]
+                         (coord-direction-handler direction (+ 1 s) piece-coords))
+                       (range number-of-spaces)))
+                ((chess-piece-data (piece-data :type)) :movement)))
   )
+
+
+
+(defn can-click-piece?
+  [board-state piece-coords]
+  (prn "can-click-piece? :" (not= (get-in board-state piece-coords) nil))
+  (not= (get-in board-state piece-coords) nil))
+
+(defn piece-clicked!
+  [piece-coords piece-data board-state]
+  (prn "SWAP piece-coords:" piece-coords)
+  (prn "piece-data: " piece-data)
+  (swap! chess-state (fn [state]
+                       (-> state
+                           (assoc :piece-clicked piece-coords)
+                           (assoc :can-move-to (can-move-to piece-coords piece-data board-state)))))
+  (prn ":can-move-to :" (@chess-state :can-move-to))
+  )
+
+(defn can-move-piece? 
+  [space-coords piece-coords board-state]
+  (let [move-piece? (and
+                     (not (empty? (filter (fn [item]
+                                            (= item space-coords))
+                                          (@chess-state :can-move-to))))
+                     (not= piece-coords nil))]
+    (prn "can-move-piece? :" move-piece?)
+    move-piece?)
+  )
+
+(defn move-piece!
+  [board-state new-coords old-coords]
+  (prn (into [:board] new-coords))
+  (swap! chess-state
+         (fn [state]
+           (-> state
+               (update-in (into [:board] new-coords)
+                          (fn [bspace] ;;WILL NEED REWORKING
+                            (get-in board-state old-coords)))
+               (assoc :piece-clicked nil)
+               (assoc :can-move-to nil)
+               (assoc-in (into [:board] old-coords) nil)))))
 
 (defn chess-square-on-click
-  [i board-state]
-  (prn "square clicked: " i)
-  (prn "square state:" ((@chess-state :board-test) i) )
-  (let [piece-clicked (@chess-state :piece-clicked)]
+  [piece-coords board-state]
+  (let [board-state (@chess-state :board)
+        last-piece-clicked (@chess-state :piece-clicked)]
+    (prn "piece-coords: " piece-coords)
+    (prn "square state: " (get-in @chess-state (into [:board] piece-coords))  )
+    (prn "T1:" (get-in board-state piece-coords))
     (cond
-      (not= (board-state i) nil)
-      (do (prn "SWAP piece-clicked:" i)
-          (swap! chess-state assoc :piece-clicked i))
+      (can-click-piece? board-state piece-coords)
+      (piece-clicked! piece-coords (get-in board-state piece-coords) board-state)
       
-      (not= piece-clicked nil)
-      (do
-        (prn "")
-        (swap! chess-state (fn [state]
-                             (-> state
-                                 (assoc-in  [:board-test piece-clicked] nil)
-                                 (update-in [:board-test i] (fn [bspace] ;;WILL NEED REWORKING
-                                                              ((@chess-state :board-test) piece-clicked)
-                                                              )))) )) 
-      :else
-      nil
-      ))
+      (can-move-piece? piece-coords last-piece-clicked board-state)
+      (move-piece! board-state piece-coords last-piece-clicked)
+      
+      )
+    (prn "")))
+
+(comment
+  [[2 5] [2 7] [1 6] [3 6] [2 6]]
+  (convert-to-coord 22)
+  (not (empty? (filter (fn [item]
+                         (= item [2 6]))
+                      [[2 5] [2 7] [1 6] [3 6] [2 6]])))
   
   
   )
 
-(defn square-color [index]
-  (let [row (quot index 4) ;; integer division
-        col (mod index 4)  ;; remainder
+
+(defn square-color [index coord]
+  (let [row (quot index 8)
+        col (mod index 8) 
         sum (+ row col)]
-    (if (even? (mod sum 2))
+    (cond
+      (not (empty? (filter (fn [item]
+                             (= item coord))
+                           (@chess-state :can-move-to))))
+      "yellow"
+      (even? (mod sum 2))
       "white"
+      :else
       "brown")))
 
 (defn chess-square
   [i]
-  [:div {:style {:width "100px"
-                 :height "100px"
-                 :border "1px solid #333"
-                 :display "flex"
-                 :align-items "center"
-                 :justify-content "center"
-                 :font-size "2.5rem"
-                 :font-weight "bold"
-                 :cursor "pointer"
-                 :background-color (square-color i)}
-         :on-click #(chess-square-on-click i (@chess-state :board-test))
-         #_(when-not (@app-state :win) 
-             (square-on-click! i))}
-   (when-let [x ((@chess-state :board-test) i)]
-     ((chess-pieces x) :symbol))]
+  (let [y&x (convert-to-coord i)]
+    [:div {:style {:width "100px"
+                   :height "100px"
+                   :border "1px solid #333"
+                   :display "flex"
+                   :align-items "center"
+                   :justify-content "center"
+                   :font-size "2.5rem"
+                   :font-weight "bold"
+                   :cursor "pointer"
+                   :background-color (square-color i y&x)}
+           :on-click #(chess-square-on-click y&x (@chess-state :board))
+           #_(when-not (@app-state :win) 
+               (square-on-click! i))}
+     
+     (when-let [piece (get-in @chess-state (into [:board] y&x)) ]
+       ((chess-piece-data (piece :type)):symbol))])
   )
 
+(comment
+
+  (into [:board]  (convert-to-coord 56)  )
+
+  (get-in @chess-state (into [:board]  (convert-to-coord 56)  ))
+  
+  (get-in @chess-state [:board 7 0])
+
+  (prn @chess-state)
+
+  )
 
 
 (defn board-chess
   []
-  [:div
+
+  #_[chess-square 0]
+  [:div 
    [:div {:style {:display "grid"
-                  :grid-template-columns "repeat(4, 100px)"
-                  :grid-template-rows "repeat(4, 100px)"
+                  :grid-template-columns "repeat(8, 100px)"
+                  :grid-template-rows "repeat(8, 100px)"
                   :gap "5px"
                   :background-color "#333"
                   :padding "5px"
                   :width "max-content"
                   :margin "20px auto"}}
-    (for [i (range 16)]
+    (for [i (range 64)]
       ^{:key i} [chess-square i])]
    ])
 
 
+(comment
+  (do    (defn convert-to-coords 
+           [number]
+           (loop [yn number
+                  xcounter 0]
+             (if (zero? (mod yn 8))
+               [xcounter (/ yn 8)]
+               (recur (- yn 1) (inc xcounter)))))
+         
+         (convert-to-coords 25))
 
+  #_( \      0  1  2  3  4  5  6  7 — X       
+      0    [00 01 02 03 04 05 06 07]
+      1  ;;[08 09 10 11 12 13 14 15]
+      2    [16 17 18 19 20 21 22 23]
+      3    [24 25 26 27 KI 29 30 31]
+      4    [32 33 34 35 36 37 38 39]
+      5    [40 41 42 43 44 45 46 47]
+      6    [48 49 50 51 52 53 54 55]                                                                     
+      7    [56 57 58 59 60 61 62 63]
+      |
+      Y
+
+     )
+  
+
+  (zero? (mod 10 8))
+  
+  (for [i (range 16)]
+    (prn i)
+    
+    )
+
+  )
 
 
 
 (defn mount-root
   []
+  #_(rdom/render [:h1 "test"] (.getElementById js/document "app"))
   #_(rdom/render [board-tic-tac-toe] (.getElementById js/document "app"))
-  (rdom/render [board-chess] (.getElementById js/document "app"))
+
+  
+  (rdom/render [board-chess] (.getElementById js/document "app")) ;;NEED TO CHANGE chess-square
   
   )
 
