@@ -32,11 +32,7 @@
                                    (reset! app-state new-state))))
     socket))
 
-(comment
-  (random-bot
-   [:X nil nil
-    :X  nil nil
-    nil :O nil]))
+
 
 (defn is-letter-below?
   [index board]
@@ -56,18 +52,7 @@
       (recur (+ i 3)))))
 
 
-(comment
-  (possible-moves [nil nil nil
-                   nil nil nil
-                   nil :X nil]
-                  true
-                  )
 
-  (possible-moves [nil nil :X
-                   :X  nil :O
-                   :X  nil :O]
-                  true)
-  )
 
 (defn possible-moves
   [board gravity?]
@@ -170,7 +155,7 @@
    #_((-> @app-state
           :board ) i)])
 
-(defn board-tic-tac-toe
+#_(defn board-tic-tac-toe
   []
   (when (and (@app-state :bot?)
              (= :O (@app-state :current-player))
@@ -229,6 +214,7 @@
 
 (defonce chess-state (r/atom
                       {
+                       :current-player :white ;; :black
                        
                        :piece-clicked nil
                        
@@ -237,17 +223,16 @@
                        :board [[nil nil nil nil nil nil nil {:type :king :color :black}]
                                [nil nil nil nil nil nil nil nil]
                                [nil nil nil nil nil nil nil nil]
-                               [nil nil nil nil nil nil nil nil]
-                               [nil nil nil nil nil nil nil nil]
-                               [nil nil nil nil nil nil nil nil]
-                               [nil nil nil nil nil nil nil nil]
+                               [nil nil nil nil {:type :knight :color :black} nil nil nil]
+                               [nil nil nil nil nil nil nil]
+                               [nil nil nil {:type :rook :color :black} nil nil nil {:type :pawn :color :black }]
+                               [nil nil nil {:type :pawn :color :black } nil nil nil nil]
                                [{:type :king :color :black}
                                 nil nil nil nil nil nil nil]]
 
                        }))
 
 (comment
-
   (vector-2d 8 (range 64))
   #_([[00 01 02 03 04 05 06 07]
     ;;[08 09 10 11 12 13 14 15]
@@ -257,12 +242,35 @@
     [40 41 42 43 44 45 46 47]
     [48 49 50 51 52 53 54 55]
     [56 57 58 59 60 61 62 63]])
+  
+  
   )
 
 (def chess-piece-data
   {:pawn {:name "pawn"
           :symbol :P
-          :movement {:U 2}}
+          :movement {:C (fn [[y x] piece-data board-state]
+                          (if (or (<= y 1)
+                                  (>= y 6))
+                            [[(- y 1) x]
+                             [(- y 2) x]]
+                            [[(- y 1) x]]))}}
+   :knight {:name "knight"
+            :symbol :KN
+            :movement {:C (fn [[y x] piece-data board-state]
+                            [[(+ y 2) (- x 1)]
+                             [(+ y 2) (+ x 1)]
+                             
+                             [(- y 2) (- x 1)]
+                             [(- y 2) (+ x 1)]
+                             
+                             [(- y 1) (+ x 2)]
+                             [(+ y 1) (+ x 2)]
+
+                             [(+ y 1) (- x 2)]
+                             [(- y 1) (- x 2)]]
+                            )
+                       :U 2}}
    
    :king {:name "king"
           :symbol :K
@@ -276,8 +284,12 @@
                      :DR 1}
           #_(fn [board piece-index]
               [])}
-   :rook {:name "king"
-         }}
+   :rook {:name "rook"
+          :symbol :R
+          :movement {:U 8
+                    :D 8
+                    :L 8
+                    :R 8}}}
   
   )
 
@@ -328,42 +340,69 @@
   )
 
 (defn coord-direction-handler
-  [direction distance [y x]]
-  (cond
-    (= direction :U)
-    [(- y distance) x]
-    (= direction :D)
-    [(+ y distance) x]
-    (= direction :L)
-    [y (- x distance)]
-    (= direction :R)
-    [y (+ x distance)]
-    (= direction :UL)
-    [(- y 1) (- x 1)]
-    (= direction :UR)
-    [(- y 1) (+ x 1)]
-    (= direction :DL)
-    [(+ y 1) (- x 1)]
-    (= direction :DR)
-    [(+ y 1) (+ x 1)]
-    :else
-    (prn "ERROR:" direction)
+  [direction distance perspective piece-coords]
+  (let [[y x] piece-coords]
+    (cond
+      (= direction :U)
+      [(- y distance) x]
+      (= direction :D)
+      [(+ y distance) x]
+      (= direction :L)
+      [y (- x distance)]
+      (= direction :R)
+      [y (+ x distance)]
+      (= direction :UL)
+      [(- y 1) (- x 1)]
+      (= direction :UR)
+      [(- y 1) (+ x 1)]
+      (= direction :DL)
+      [(+ y 1) (- x 1)]
+      (= direction :DR)
+      [(+ y 1) (+ x 1)]
+      :else
+      (prn "ERROR:" direction)))
+
+  )
+(defn custom-coord-handler
+    [f piece-coords piece-data board-state]
+    (f piece-coords board-state))
+
+(defn all-piece-coords
+  [board-state]
+  (keep-indexed
+   (fn [index item]
+     (when-not (nil? item)
+       (convert-to-coord index)))
+   (reduce into board-state))
+  
+  )
+
+(comment
+  (all-piece-coords (:board @chess-state))
+
+  (let [board-state (:board @chess-state)]
+    (map (fn [index]
+           (prn index)
+           (get-in board-state index))
+         (all-piece-coords (:board @chess-state)))
     )
+  )
 
-  #_{:U (fn [[y x] n] [(- y n) x])
-     :D (fn [[y x] n] [(+ y n) x])
-     :L (fn [[y x] n] [y (- x n)])
-     :R (fn [[y x] n] [y (+ x n)])})
-
-
+  
 (defn can-move-to
   [piece-coords piece-data board-state]
   (prn "piece-data: " piece-data)
-  (vec  (mapcat (fn [[direction number-of-spaces]]
-                  (map (fn [s]
-                         (coord-direction-handler direction (+ 1 s) piece-coords))
-                       (range number-of-spaces)))
-                ((chess-piece-data (piece-data :type)) :movement)))
+  (vec (if (:ignore-movement piece-data)
+         (for [n (range 64)]
+           (convert-to-coord n))
+         
+         (mapcat (fn [[direction number-of-spaces]]
+                   (if (= direction :C)
+                     (custom-coord-handler number-of-spaces piece-coords piece-data board-state)
+                     (map (fn [s]
+                            (coord-direction-handler direction (+ 1 s) :white piece-coords))
+                          (range number-of-spaces))))
+                 (:movement (chess-piece-data (:type piece-data))))))
   )
 
 
@@ -502,40 +541,7 @@
    ])
 
 
-(comment
-  (do    (defn convert-to-coords 
-           [number]
-           (loop [yn number
-                  xcounter 0]
-             (if (zero? (mod yn 8))
-               [xcounter (/ yn 8)]
-               (recur (- yn 1) (inc xcounter)))))
-         
-         (convert-to-coords 25))
 
-  #_( \      0  1  2  3  4  5  6  7 — X       
-      0    [00 01 02 03 04 05 06 07]
-      1  ;;[08 09 10 11 12 13 14 15]
-      2    [16 17 18 19 20 21 22 23]
-      3    [24 25 26 27 KI 29 30 31]
-      4    [32 33 34 35 36 37 38 39]
-      5    [40 41 42 43 44 45 46 47]
-      6    [48 49 50 51 52 53 54 55]                                                                     
-      7    [56 57 58 59 60 61 62 63]
-      |
-      Y
-
-     )
-  
-
-  (zero? (mod 10 8))
-  
-  (for [i (range 16)]
-    (prn i)
-    
-    )
-
-  )
 
 
 
